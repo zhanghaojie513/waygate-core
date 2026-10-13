@@ -16,6 +16,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { Adapter, ChatMessage, ChatRequestBody } from './types.js';
+import { aggregateSseToJson } from './aggregate.js';
 
 export interface ServeOptions {
   host: string;
@@ -121,13 +122,27 @@ export function startServer(adapter: Adapter, opts: ServeOptions): Promise<Runni
       }
 
       const body: ChatRequestBody = { ...raw, model: raw.model, messages: raw.messages as ChatMessage[] };
-      if (opts.verbose) log(`[请求] ${adapter.command} model=${body.model} messages=${body.messages.length} 流=${body.stream !== false}`);
+      const wantsStream = body.stream !== false; // OpenAI 惯例：缺省 = 流式
+      if (opts.verbose) log(`[请求] ${adapter.command} model=${body.model} messages=${body.messages.length} 流=${wantsStream}`);
 
       /* 客户端断连即中止上游（不留下孤儿请求）。 */
       const ac = new AbortController();
       req.on('close', () => ac.abort());
 
       const result = await adapter.chat(body, ac.signal);
+
+      /* stream:false → 聚合为单个 JSON 返回（OpenAI 规范要求）；
+         stream:true（或缺省）→ SSE 原样透传。 */
+      if (!wantsStream) {
+        try {
+          const json = await aggregateSseToJson(result.stream);
+          sendJson(res, result.status, JSON.parse(json));
+        } catch (err) {
+          if (!res.headersSent) sendError(res, 502, `非流式聚合失败：${(err as Error).message}`);
+          else res.end();
+        }
+        return;
+      }
 
       res.writeHead(result.status, {
         'content-type': 'text/event-stream; charset=utf-8',

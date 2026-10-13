@@ -7,6 +7,7 @@
 export type { Adapter, ChatMessage, ChatRequestBody, CredentialStatus, ModelEntry, UpstreamCallResult, } from './types.js';
 export { waygateHome, commandDir, resolveKey, generateKey, maskKey } from './config.js';
 export { startServer, type ServeOptions, type RunningServer } from './server.js';
+export { aggregateSseToJson } from './aggregate.js';
 export { renderReady, renderReadyJson, type ReadyReport } from './report.js';
 export { runDoctor, renderDoctor, checkPortFree, type CheckResult } from './doctor.js';
 export { runCli, parseArgs, helpText, type CliMeta, type ParsedArgs } from './cli.js';
