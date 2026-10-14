@@ -1,25 +1,29 @@
 {
   "name": "waygate-core",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Waygate 家族共享骨架：本地反代 HTTP 服务、入站密钥、CLI、自检",
-  "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhanghaojie513/waygate-core.git"
+  },
+  "homepage": "https://github.com/zhanghaojie513/waygate-core#readme",
+  "bugs": {
+    "url": "https://github.com/zhanghaojie513/waygate-core/issues"
+  },
+  "type": "module",
   "engines": {
     "node": ">=20"
   },
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
@@ -31,7 +35,11 @@
     "typescript": "^5.7.2",
     "vitest": "^2.1.9"
   },
-  "publishConfig": {
-    "access": "public"
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   }
 }
