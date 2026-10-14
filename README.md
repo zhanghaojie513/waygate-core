@@ -21,9 +21,11 @@
 它管的是每个本地反代**都一样**的部分：
 
 - **本地 HTTP 服务** —— OpenAI / Anthropic 双端点、SSE 流原样透传、客户端断连即中止上游
+- **流式与非流式** —— `stream: false` 时自动把 SSE 聚合成单个 `chat.completion` JSON（符合 OpenAI 规范）
 - **入站密钥** —— 自动生成（`sk-<command>-…`）、落盘复用（客户端只需配一次）
 - **配置目录** —— `~/.waygate/<command>/`，跨命令互不干扰
 - **统一 CLI** —— `serve` / `models` / `doctor` / `login` 四个子命令，两家完全同构
+- **扩展子命令** —— 适配器可注册自家专属命令（如 `mmcode checkin`），CLI 统一解析与分发
 - **启动输出** —— 「凭证状态 + 代理地址 + 密钥 + 模型 ID」一屏内复制得走；`--json` 机器可读
 - **自检** —— 端口占用 / 凭证 / 模型清单 / 上游连通，逐项给人话结论 + 下一步动作
 
@@ -34,10 +36,10 @@
 ```mermaid
 flowchart LR
   subgraph adapters [适配器仓库]
-    Q[waygate-qoder<br/>COSY 签名 / DPAPI 解密]
-    M[waygate-mmcode<br/>Anthropic 兼容 / 明文 JSON]
+    Q[waygate-qoder<br/>COSY 签名 · DPAPI 解密]
+    M[waygate-mmcode<br/>Anthropic 兼容 · 明文 JSON]
   end
-  C[@waygate/core<br/>HTTP 服务 / 密钥 / CLI / 自检]
+  C[waygate-core 包<br/>HTTP 服务 · 密钥 · CLI · 自检]
   Q -->|Adapter 接口| C
   M -->|Adapter 接口| C
 
@@ -62,11 +64,17 @@ const adapter: Adapter = {
   listModels: async () => [{ id: 'model-key', displayName: 'Model Name' }],
   chat: async (body, signal) => ({ stream /* OpenAI 兼容 SSE */, status: 200 }),
   doctorChecks: async () => [],  // 可选：额外的自检项
+
+  /* 可选：本家专属子命令（core 负责解析、help 展示、分发） */
+  extraCommands: [{
+    name: 'checkin', summary: '每日签到领积分', usage: 'checkin',
+    run: async ({ json }) => (json ? '{}' : '✓ 签到成功'),
+  }],
 };
 await runCli(adapter, { version: '0.1.0' });
 ```
 
-实现这 7 个钩子，core 会替你处理 HTTP 服务、密钥管理、CLI 解析、启动输出、自检——你只写上游协议那一层。
+实现核心钩子，core 会替你处理 HTTP 服务、密钥管理、CLI 解析、启动输出、自检——你只写上游协议那一层。
 
 > 本仓库的 `dist/` 已入库（供 `github:` 依赖零构建安装）。**维护约定：改 `src` 后必须 `npm run build` 并提交 `dist`。**
 
