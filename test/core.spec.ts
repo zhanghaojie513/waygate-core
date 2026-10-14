@@ -215,7 +215,8 @@ describe('report', () => {
     expect(text).toContain('http://127.0.0.1:18901');
     expect(text).toContain('model-a');
     expect(text).toContain('Model B');
-    expect(text).not.toContain('sk-fake-0123456789abcdef0123456789abcdef'); // 密钥打码
+    /* 密钥必须**完整**显示 —— 它就是要给用户复制进客户端的，打码则不可用。 */
+    expect(text).toContain('sk-fake-0123456789abcdef0123456789abcdef');
   });
 
   it('0.0.0.0 时打印局域网暴露警告', () => {
@@ -224,5 +225,34 @@ describe('report', () => {
       host: '0.0.0.0', port: 1, key: 'k', credential: { ok: true, detail: '' }, models: [],
     });
     expect(text).toContain('局域网');
+  });
+});
+
+describe('server：路径兼容（/v1 前缀可带可不带）', () => {
+  it('四种组合都通：{带,不带}/v1 × {models, chat}', async () => {
+    const running = await startServer(fakeAdapter(), { host: '127.0.0.1', port: 0, apiKey: 'sk-t' });
+    const base = `http://127.0.0.1:${running.port}`;
+    const h = { authorization: 'Bearer sk-t', 'content-type': 'application/json' };
+    const body = JSON.stringify({ model: 'model-a', messages: [{ role: 'user', content: 'hi' }] });
+    try {
+      expect((await fetch(`${base}/v1/models`, { headers: h })).status).toBe(200);
+      expect((await fetch(`${base}/models`, { headers: h })).status).toBe(200);
+      expect((await fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: h, body })).status).toBe(200);
+      expect((await fetch(`${base}/chat/completions`, { method: 'POST', headers: h, body })).status).toBe(200);
+      expect((await fetch(`${base}/v1/messages`, { method: 'POST', headers: h, body })).status).toBe(200);
+      expect((await fetch(`${base}/messages`, { method: 'POST', headers: h, body })).status).toBe(200);
+    } finally {
+      await running.close();
+    }
+  });
+
+  it('真正未知的路径仍 404（兼容不等于全放行）', async () => {
+    const running = await startServer(fakeAdapter(), { host: '127.0.0.1', port: 0, apiKey: 'sk-t' });
+    try {
+      const res = await fetch(`http://127.0.0.1:${running.port}/v1/nope`, { headers: { authorization: 'Bearer sk-t' } });
+      expect(res.status).toBe(404);
+    } finally {
+      await running.close();
+    }
   });
 });

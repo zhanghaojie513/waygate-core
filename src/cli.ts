@@ -48,6 +48,7 @@ export function parseArgs(argv: string[], adapter: Adapter): ParsedArgs {
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
+    if (a === undefined) break;
     if (a === '--host') host = args[++i] ?? host;
     else if (a === '--port') {
       const v = Number(args[++i]);

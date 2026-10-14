@@ -101,7 +101,12 @@ export function startServer(adapter: Adapter, opts: ServeOptions): Promise<Runni
       return;
     }
 
-    if (path === '/v1/models' && req.method === 'GET') {
+    /* [v0.2.2] 路径兼容：客户端对 base_url 的填法不一 —— 有的填 `http://host:port/v1`
+       （拼出 /v1/chat/completions），有的填 `http://host:port`（拼出 /chat/completions）。
+       两种都接受，避免"多一个 /v1 就 404"这类让人摸不着头脑的失败。 */
+    const normalize = (p: string): string => (p.startsWith('/v1/') ? p.slice(3) : p);
+
+    if (normalize(path) === '/models' && req.method === 'GET') {
       const models = await adapter.listModels();
       sendJson(res, 200, {
         object: 'list',
@@ -110,7 +115,7 @@ export function startServer(adapter: Adapter, opts: ServeOptions): Promise<Runni
       return;
     }
 
-    if ((path === '/v1/chat/completions' || path === '/v1/messages') && req.method === 'POST') {
+    if ((normalize(path) === '/chat/completions' || normalize(path) === '/messages') && req.method === 'POST') {
       const raw = (await readJsonBody(req)) as Partial<ChatRequestBody>;
       if (!raw || typeof raw.model !== 'string' || !raw.model.trim()) {
         sendError(res, 400, 'model 为必填项', 'invalid_request_error');

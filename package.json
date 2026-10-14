@@ -1,6 +1,6 @@
 {
-  "name": "@waygate/core",
-  "version": "0.1.0",
+  "name": "waygate-core",
+  "version": "0.2.2",
   "description": "Waygate 家族共享骨架：本地反代 HTTP 服务、入站密钥、CLI、自检",
   "type": "module",
   "license": "MIT",
@@ -23,11 +23,15 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.9"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

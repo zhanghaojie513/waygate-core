@@ -1,4 +1,4 @@
-# @waygate/core
+# waygate-core
 
 <div align="center">
 
@@ -52,7 +52,7 @@ flowchart LR
 ## 给适配器作者
 
 ```ts
-import { runCli, type Adapter } from '@waygate/core';
+import { runCli, type Adapter } from 'waygate-core';
 
 const adapter: Adapter = {
   command: 'qoc',              // 命令名（决定 ~/.waygate/<command>/ 与 sk-<command>- 密钥前缀）
@@ -76,7 +76,7 @@ await runCli(adapter, { version: '0.1.0' });
 
 实现核心钩子，core 会替你处理 HTTP 服务、密钥管理、CLI 解析、启动输出、自检——你只写上游协议那一层。
 
-> 本仓库的 `dist/` 已入库（供 `github:` 依赖零构建安装）。**维护约定：改 `src` 后必须 `npm run build` 并提交 `dist`。**
+> 安装：`npm i waygate-core`（仓库同时保留 `dist/`，供 GitHub 直装兜底）。
 
 ## 相关项目
 
