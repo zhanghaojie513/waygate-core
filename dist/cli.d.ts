@@ -11,12 +11,15 @@ export interface CliMeta {
     version: string;
 }
 export interface ParsedArgs {
-    command: 'serve' | 'models' | 'doctor' | 'login' | 'help';
+    /** 内置子命令，或适配器自定义子命令名。 */
+    command: 'serve' | 'models' | 'doctor' | 'login' | 'help' | (string & {});
     host: string;
     port?: number;
     key?: string;
     json: boolean;
     verbose: boolean;
+    /** 传给自定义子命令的剩余位置参数。 */
+    rest: string[];
 }
 export declare function parseArgs(argv: string[], adapter: Adapter): ParsedArgs;
 export declare function helpText(adapter: Adapter): string;

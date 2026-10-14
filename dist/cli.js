@@ -8,9 +8,10 @@ import { resolveKey, maskKey } from './config.js';
 import { runDoctor, renderDoctor } from './doctor.js';
 import { renderReady, renderReadyJson } from './report.js';
 import { startServer } from './server.js';
+const BUILTIN = ['serve', 'models', 'doctor', 'login', 'help', '--help', '-h'];
 export function parseArgs(argv, adapter) {
     const args = [...argv];
-    const known = new Set(['serve', 'models', 'doctor', 'login', 'help', '--help', '-h']);
+    const known = new Set([...BUILTIN, ...(adapter.extraCommands ?? []).map((c) => c.name)]);
     let command = 'serve';
     if (args[0] && known.has(args[0])) {
         const c = args.shift();
@@ -21,6 +22,7 @@ export function parseArgs(argv, adapter) {
     let key;
     let json = false;
     let verbose = false;
+    const rest = [];
     for (let i = 0; i < args.length; i += 1) {
         const a = args[i];
         if (a === '--host')
@@ -39,11 +41,12 @@ export function parseArgs(argv, adapter) {
             verbose = true;
         else if (a === '--help' || a === '-h')
             command = 'help';
-        else
+        else if (a.startsWith('-'))
             throw new Error(`未知参数：${a}（用 --help 看用法）`);
+        else
+            rest.push(a); /* 自定义子命令的位置参数（如 checkin --all） */
     }
-    void adapter;
-    return { command, host, port, key, json, verbose };
+    return { command, host, port, key, json, verbose, rest };
 }
 export function helpText(adapter) {
     const c = adapter.command;
@@ -56,6 +59,9 @@ export function helpText(adapter) {
         `  ${c} models          只列出模型 ID（不起服务）`,
         `  ${c} doctor          自检：端口 / 凭证 / 模型 / 上游连通`,
         `  ${c} login           导入或刷新本机 ${adapter.displayName} 客户端的登录态`,
+        ...(adapter.extraCommands?.length
+            ? ['', `${adapter.displayName} 专属：`, ...adapter.extraCommands.map((x) => `  ${c} ${x.usage.padEnd(17)}${x.summary}`)]
+            : []),
         '',
         '参数：',
         '  --port <n>          监听端口（默认 ' + adapter.defaultPort + '）',
@@ -81,6 +87,20 @@ export async function runCli(adapter, meta, argv = process.argv.slice(2)) {
     if (parsed.command === 'help') {
         process.stdout.write(helpText(adapter) + '\n');
         return 0;
+    }
+    /* 适配器自定义子命令（如 mmcode 的 checkin / credits）。 */
+    const extra = adapter.extraCommands?.find((x) => x.name === parsed.command);
+    if (extra) {
+        try {
+            const out = await extra.run({ json: parsed.json, args: parsed.rest });
+            if (out)
+                process.stdout.write(out.endsWith('\n') ? out : out + '\n');
+            return 0;
+        }
+        catch (err) {
+            process.stderr.write(`${extra.name} 失败：${err.message}\n`);
+            return 1;
+        }
     }
     if (parsed.command === 'login') {
         try {

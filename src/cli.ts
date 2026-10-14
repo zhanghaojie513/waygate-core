@@ -17,21 +17,26 @@ export interface CliMeta {
 }
 
 export interface ParsedArgs {
-  command: 'serve' | 'models' | 'doctor' | 'login' | 'help';
+  /** 内置子命令，或适配器自定义子命令名。 */
+  command: 'serve' | 'models' | 'doctor' | 'login' | 'help' | (string & {});
   host: string;
   port?: number;
   key?: string;
   json: boolean;
   verbose: boolean;
+  /** 传给自定义子命令的剩余位置参数。 */
+  rest: string[];
 }
+
+const BUILTIN = ['serve', 'models', 'doctor', 'login', 'help', '--help', '-h'] as const;
 
 export function parseArgs(argv: string[], adapter: Adapter): ParsedArgs {
   const args = [...argv];
-  const known = new Set(['serve', 'models', 'doctor', 'login', 'help', '--help', '-h']);
+  const known = new Set<string>([...BUILTIN, ...(adapter.extraCommands ?? []).map((c) => c.name)]);
   let command: ParsedArgs['command'] = 'serve';
   if (args[0] && known.has(args[0])) {
     const c = args.shift()!;
-    command = c === '--help' || c === '-h' ? 'help' : (c as ParsedArgs['command']);
+    command = c === '--help' || c === '-h' ? 'help' : c;
   }
 
   let host = '127.0.0.1';
@@ -39,6 +44,7 @@ export function parseArgs(argv: string[], adapter: Adapter): ParsedArgs {
   let key: string | undefined;
   let json = false;
   let verbose = false;
+  const rest: string[] = [];
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
@@ -51,10 +57,10 @@ export function parseArgs(argv: string[], adapter: Adapter): ParsedArgs {
     else if (a === '--json') json = true;
     else if (a === '--verbose') verbose = true;
     else if (a === '--help' || a === '-h') command = 'help';
-    else throw new Error(`未知参数：${a}（用 --help 看用法）`);
+    else if (a.startsWith('-')) throw new Error(`未知参数：${a}（用 --help 看用法）`);
+    else rest.push(a); /* 自定义子命令的位置参数（如 checkin --all） */
   }
-  void adapter;
-  return { command, host, port, key, json, verbose };
+  return { command, host, port, key, json, verbose, rest };
 }
 
 export function helpText(adapter: Adapter): string {
@@ -68,6 +74,9 @@ export function helpText(adapter: Adapter): string {
     `  ${c} models          只列出模型 ID（不起服务）`,
     `  ${c} doctor          自检：端口 / 凭证 / 模型 / 上游连通`,
     `  ${c} login           导入或刷新本机 ${adapter.displayName} 客户端的登录态`,
+    ...(adapter.extraCommands?.length
+      ? ['', `${adapter.displayName} 专属：`, ...adapter.extraCommands.map((x) => `  ${c} ${x.usage.padEnd(17)}${x.summary}`)]
+      : []),
     '',
     '参数：',
     '  --port <n>          监听端口（默认 ' + adapter.defaultPort + '）',
@@ -94,6 +103,19 @@ export async function runCli(adapter: Adapter, meta: CliMeta, argv: string[] = p
   if (parsed.command === 'help') {
     process.stdout.write(helpText(adapter) + '\n');
     return 0;
+  }
+
+  /* 适配器自定义子命令（如 mmcode 的 checkin / credits）。 */
+  const extra = adapter.extraCommands?.find((x) => x.name === parsed.command);
+  if (extra) {
+    try {
+      const out = await extra.run({ json: parsed.json, args: parsed.rest });
+      if (out) process.stdout.write(out.endsWith('\n') ? out : out + '\n');
+      return 0;
+    } catch (err) {
+      process.stderr.write(`${extra.name} 失败：${(err as Error).message}\n`);
+      return 1;
+    }
   }
 
   if (parsed.command === 'login') {

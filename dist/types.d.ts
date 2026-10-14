@@ -82,4 +82,20 @@ export interface Adapter {
         ok: boolean;
         detail: string;
     }>>;
+    /** 可选：本家特有的子命令（如 MiniMax 的签到/积分）。core 负责解析与分发。 */
+    extraCommands?: ExtraCommand[];
+}
+/** 适配器自有的子命令（在 core 的通用子命令之外）。 */
+export interface ExtraCommand {
+    /** 子命令名（如 'checkin' / 'credits'）。 */
+    name: string;
+    /** 一句话说明（帮助与列表用）。 */
+    summary: string;
+    /** 用法行（帮助里显示的完整形态）。 */
+    usage: string;
+    /** 执行；`json` 为真时输出机器可读结果（返回的字符串直接打印）。 */
+    run(opts: {
+        json: boolean;
+        args: string[];
+    }): Promise<string>;
 }
