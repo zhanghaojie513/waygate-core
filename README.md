@@ -81,8 +81,8 @@ await runCli(adapter, { version: '0.1.0' });
 
 ## 相关项目
 
-- **[waygate-qoder](https://github.com/zhanghaojie513/waygate-qoder)** —— Qoder CN 本地反代（命令 `qoc`）
-- **[waygate-mmcode](https://github.com/zhanghaojie513/waygate-mmcode)** —— MiniMax Code 本地反代（命令 `mmcode`）
+- **[waygate-qoder](https://github.com/zhanghaojie513/waygate-qoder)** —— Qoder CN 本地反代（命令 `qoc`，`npm i -g waygate-qoder`）
+- **[waygate-mmcode](https://github.com/zhanghaojie513/waygate-mmcode)** —— MiniMax Code 本地反代（命令 `mmcode`，`npm i -g waygate-mmcode`）
 - **[relay-station](https://github.com/zhanghaojie513/relay-station)** —— 同一作者的完整多提供商反代（含控制台、用量统计）
 
 ## License
