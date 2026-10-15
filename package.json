@@ -1,6 +1,6 @@
 {
   "name": "waygate-core",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Waygate 家族共享骨架：本地反代 HTTP 服务、入站密钥、CLI、自检",
   "license": "MIT",
   "repository": {

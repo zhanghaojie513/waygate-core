@@ -74,7 +74,7 @@ export function helpText(adapter: Adapter): string {
     `  ${c} serve           同上`,
     `  ${c} models          只列出模型 ID（不起服务）`,
     `  ${c} doctor          自检：端口 / 凭证 / 模型 / 上游连通`,
-    `  ${c} login           导入或刷新本机 ${adapter.displayName} 客户端的登录态`,
+    `  ${c} login           ${adapter.loginHint ?? `导入或刷新本机 ${adapter.displayName} 客户端的登录态`}`,
     ...(adapter.extraCommands?.length
       ? ['', `${adapter.displayName} 专属：`, ...adapter.extraCommands.map((x) => `  ${c} ${x.usage.padEnd(17)}${x.summary}`)]
       : []),
@@ -87,7 +87,7 @@ export function helpText(adapter: Adapter): string {
     '  --verbose           打印每个请求的路由日志',
     '  --help              显示本帮助',
     '',
-    '只读取你本机的客户端登录态、在上游与客户端之间本地转发；不上传任何数据。',
+    '只在你本机读写与转发；不上传任何数据。',
   ].join('\n');
 }
 

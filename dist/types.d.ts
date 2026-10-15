@@ -83,6 +83,8 @@ export interface Adapter {
         detail: string;
     }>>;
     /** 可选：本家特有的子命令（如 MiniMax 的签到/积分）。core 负责解析与分发。 */
+    /** 登录的一句话说明（帮助文本用）。缺省 = 读本机客户端登录态。 */
+    loginHint?: string;
     extraCommands?: ExtraCommand[];
 }
 /** 适配器自有的子命令（在 core 的通用子命令之外）。 */
