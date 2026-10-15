@@ -17,6 +17,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { Adapter, ChatMessage, ChatRequestBody } from './types.js';
 import { aggregateSseToJson } from './aggregate.js';
+import { createSseDeltaNormalizer } from './sse-delta.js';
 
 export interface ServeOptions {
   host: string;
@@ -155,7 +156,10 @@ export function startServer(adapter: Adapter, opts: ServeOptions): Promise<Runni
         connection: 'keep-alive',
         'x-accel-buffering': 'no',
       });
-      const reader = result.stream.getReader();
+      /* ★ delta 空值归一化（见 sse-delta.ts）：上游每帧塞满全量字段（思考帧带
+         `content:""`），ai-sdk 系客户端会把它当分段边界、把思考拆成一词一段 ——
+         ZCode 里表现为一次回答堆出几十条「思考」。转发前剥掉空值，语义无损。 */
+      const reader = result.stream.pipeThrough(createSseDeltaNormalizer()).getReader();
       try {
         for (;;) {
           const { done, value } = await reader.read();

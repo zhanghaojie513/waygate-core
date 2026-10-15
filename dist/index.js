@@ -7,6 +7,7 @@
 export { waygateHome, commandDir, resolveKey, generateKey, maskKey } from './config.js';
 export { startServer } from './server.js';
 export { aggregateSseToJson } from './aggregate.js';
+export { createSseDeltaNormalizer, normalizeChunkDelta, normalizeSsePayload, isNoopValue } from './sse-delta.js';
 export { renderReady, renderReadyJson } from './report.js';
 export { runDoctor, renderDoctor, checkPortFree } from './doctor.js';
 export { runCli, parseArgs, helpText } from './cli.js';
