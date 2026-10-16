@@ -1,9 +1,14 @@
 /**
  * 本地反代 HTTP 服务骨架。
  *
- * 职责边界（刻意收窄）：只做「收请求 → 交给适配器 → 把 SSE 流原样吐回」。
- * 协议翻译、凭证、模型清单全在**适配器**里 —— core 不含任何上游知识，
- * 所以两家适配器共用这一个服务实现，改一处两家都受益。
+ * 职责边界（刻意收窄）：只做「收请求 → 交给适配器 → 把结果吐回」。
+ * **上游**协议翻译、凭证、模型清单全在**适配器**里 —— core 不含任何上游知识，
+ * 所以各家适配器共用这一个服务实现，改一处各家都受益。
+ *
+ * **出口协议是 core 的职责**（见 `anthropic.ts`）：`/v1/messages` 收的是 Anthropic
+ * 请求，就必须按 Anthropic 的 `event:` 事件序列回 —— 否则 Claude Code 等客户端
+ * 解析必失败（它们按 `message_start` / `content_block_delta` 认，不认 OpenAI 的
+ * `chat.completion.chunk`）。`/v1/chat/completions` 仍走 OpenAI 形状。
  *
  * 暴露的端点（与 OpenAI / Anthropic 客户端约定一致）：
  *   POST /v1/chat/completions   OpenAI 兼容聊天（Cursor / Cherry Studio 等）
@@ -29,6 +34,6 @@ export interface RunningServer {
     close(): Promise<void>;
 }
 /**
- * 启动服务。适配器提供协议侧的一切（凭证、翻译、流）。
+ * 启动服务。适配器提供**上游**协议侧的一切（凭证、翻译、流）。
  */
 export declare function startServer(adapter: Adapter, opts: ServeOptions): Promise<RunningServer>;

@@ -104,8 +104,13 @@ describe('server：鉴权与路由', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toContain('text/event-stream');
       const text = await res.text();
-      expect(text).toContain('model-a');
-      expect(text).toContain('[DONE]');
+      /* [v0.2.8] Anthropic 出口：出的是 `event:` 事件序列，**不是** OpenAI 的
+         `chat.completion.chunk`，也**不含** OpenAI 专有的 `[DONE]` 终帧标记 ——
+         客户端按前者解析，收到后者会报 invalid_union。 */
+      expect(text).toContain('event: message_start');
+      expect(text).toContain('event: message_stop');
+      expect(text).not.toContain('[DONE]');
+      expect(text).not.toContain('chat.completion.chunk');
     } finally {
       await running.close();
     }
@@ -149,6 +154,28 @@ describe('server：鉴权与路由', () => {
       });
       expect(res.status).toBe(502);
       expect(((await res.json()) as { error: { message: string } }).error.message).toContain('上游炸了');
+    } finally {
+      await running.close();
+    }
+  });
+
+  it('★ 适配器抛错时 /v1/messages 回 Anthropic 形状错误体（不是 OpenAI 的 error.code）', async () => {
+    const running = await startServer(
+      fakeAdapter({ chat: async () => { throw new Error('凭证过期了'); } }),
+      { host: '127.0.0.1', port: 0, apiKey: 'sk-test' },
+    );
+    try {
+      const res = await fetch(`http://127.0.0.1:${running.port}/v1/messages`, {
+        method: 'POST',
+        headers: { 'x-api-key': 'sk-test', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'x' }] }),
+      });
+      expect(res.status).toBe(502);
+      const body = (await res.json()) as { type: string; error: { type: string; message: string } };
+      expect(body.type).toBe('error');
+      expect(body.error.type).toBe('api_error');
+      expect(body.error.message).toContain('凭证过期了');
+      expect(body.error).not.toHaveProperty('code');
     } finally {
       await running.close();
     }

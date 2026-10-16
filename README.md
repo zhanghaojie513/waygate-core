@@ -22,7 +22,8 @@
 它管的是每个本地反代**都一样**的部分：
 
 - **本地 HTTP 服务** —— OpenAI / Anthropic 双端点、SSE 流原样透传、客户端断连即中止上游
-- **流式与非流式** —— `stream: false` 时自动把 SSE 聚合成单个 `chat.completion` JSON（符合 OpenAI 规范）
+- **两套出口协议** —— `/v1/chat/completions` 吐 OpenAI 形状、`/v1/messages` 吐 Anthropic 的 `message_start → content_block_delta → message_stop` 事件序列（含 `system` / content blocks / `tools` 的入站归一、Anthropic 形状错误体），Claude Code 等客户端可直连
+- **流式与非流式** —— `stream: false` 时自动把 SSE 聚合为单个 JSON（OpenAI 回 `chat.completion`，Anthropic 回 `message`，各按各的规范）
 - **入站密钥** —— 自动生成（`sk-<command>-…`）、落盘复用（客户端只需配一次）
 - **配置目录** —— `~/.waygate/<command>/`，跨命令互不干扰
 - **统一 CLI** —— `serve` / `models` / `doctor` / `login` 四个子命令，三家完全同构
