@@ -20,6 +20,26 @@ export function suggestPort(port) {
     /* 8786–8789 是四家的默认区间；若用户改过且撞上，也给一个「原值 + 1」之外的稳定建议。 */
     return port >= 8691 && port <= 8790 ? 8791 : port + 1;
 }
+/** 自动改端口时最多往后探这么多个（避免长时间扫描）。 */
+const AUTO_PORT_SCAN = 20;
+/**
+ * 默认端口不可用时，找下一个能用的。
+ *
+ * **只用于「用户没显式指定 --port」的情形** —— 用户明确指定了端口却绑不上，
+ * 必须原样报错（他可能是在部署脚本里固定端口），不能悄悄换。
+ *
+ * 从 `suggestPort(start)` 起往后探，最多 `AUTO_PORT_SCAN` 个；全都不行返回 null。
+ */
+export async function findFreePort(host, start) {
+    for (let i = 0; i < AUTO_PORT_SCAN; i += 1) {
+        const candidate = start + i;
+        if (candidate < 1 || candidate > 65535)
+            break;
+        if ((await probePort(host, candidate)) === null)
+            return candidate;
+    }
+    return null;
+}
 /**
  * 试绑一次端口，判断能否监听。
  *

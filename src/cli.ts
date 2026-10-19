@@ -7,7 +7,7 @@
 
 import { resolveKey, maskKey } from './config.js';
 import { runDoctor, renderDoctor } from './doctor.js';
-import { probePort } from './port.js';
+import { findFreePort, probePort, suggestPort } from './port.js';
 import { renderReady, renderReadyJson } from './report.js';
 import { startServer } from './server.js';
 import type { Adapter } from './types.js';
@@ -133,7 +133,9 @@ export async function runCli(adapter: Adapter, meta: CliMeta, argv: string[] = p
   }
 
   const host = parsed.host;
-  const port = parsed.port ?? adapter.defaultPort;
+  let port = parsed.port ?? adapter.defaultPort;
+  /** 是否发生了自动改端口（用于在启动输出里如实告知）。 */
+  let autoPortFrom: number | null = null;
 
   if (parsed.command === 'doctor') {
     const results = await runDoctor(adapter, host, port);
@@ -173,11 +175,32 @@ export async function runCli(adapter: Adapter, meta: CliMeta, argv: string[] = p
 
   /* 端口预检（v0.2.9）：先探一次再起服务，把 EACCES / EADDRINUSE 翻译成能照做的提示。
      Windows 上 8786–8789 常被系统预留段整段占住（Hyper-V / WSL / Docker），
-     那种情况 netstat 看不到占用者，只抛堆栈用户无从下手。 */
+     那种情况 netstat 看不到占用者，只抛堆栈用户无从下手。
+
+     [v0.2.10] 若用户**没显式指定 --port**，默认端口不可用时自动往后找一个能用的
+     ——「装完直接敲命令就能跑」是本地工具的底线，不该逼用户先查系统预留段。
+     用户显式给了 --port 却绑不上时**不自动改**（部署脚本可能固定端口），原样报错。 */
   const portProblem = await probePort(host, port);
   if (portProblem) {
-    process.stderr.write(`${portProblem}\n`);
-    return 1;
+    if (parsed.port !== undefined) {
+      process.stderr.write(`${portProblem}\n`);
+      return 1;
+    }
+    const fallback = await findFreePort(host, suggestPort(port));
+    if (fallback === null) {
+      process.stderr.write(`${portProblem}\n`);
+      return 1;
+    }
+    autoPortFrom = port;
+    port = fallback;
+  }
+
+  /* 自动改端口时如实告知（不静默）—— 用户要知道「为什么不是默认那个」。 */
+  if (autoPortFrom !== null && !parsed.json) {
+    process.stderr.write(
+      `默认端口 ${autoPortFrom} 在本机不可用（多半是 Windows 系统预留段），已自动改用 ${port}。\n` +
+        `  · 想固定下来：加 \`--port ${port}\`，或查预留段：netsh interface ipv4 show excludedportrange protocol=tcp\n`,
+    );
   }
 
   try {

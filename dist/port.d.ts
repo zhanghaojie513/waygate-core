@@ -19,6 +19,15 @@ export type PortProblem = string | null;
 /** 常见可用端口的建议值（落在 Windows 默认保留段之外，且四家连着方便记）。 */
 export declare function suggestPort(port: number): number;
 /**
+ * 默认端口不可用时，找下一个能用的。
+ *
+ * **只用于「用户没显式指定 --port」的情形** —— 用户明确指定了端口却绑不上，
+ * 必须原样报错（他可能是在部署脚本里固定端口），不能悄悄换。
+ *
+ * 从 `suggestPort(start)` 起往后探，最多 `AUTO_PORT_SCAN` 个；全都不行返回 null。
+ */
+export declare function findFreePort(host: string, start: number): Promise<number | null>;
+/**
  * 试绑一次端口，判断能否监听。
  *
  * 探测完立刻关闭，不占用端口。任何错误都转成可读文案，**不抛异常**。

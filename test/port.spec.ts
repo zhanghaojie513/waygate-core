@@ -11,7 +11,7 @@
 
 import { createServer } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { probePort, suggestPort } from '../src/port.js';
+import { findFreePort, probePort, suggestPort } from '../src/port.js';
 
 describe('suggestPort', () => {
   it('★ 默认区间 8691–8790（Windows 常见预留段）→ 建议 8791', () => {
@@ -102,6 +102,41 @@ describe('probePort：失败形态给可照做的提示', () => {
     expect(msg).not.toBeNull();
     expect(msg).toContain('EADDRNOTAVAIL');
     expect(msg).toContain('127.0.0.1');
+  });
+});
+
+describe('findFreePort：默认端口不可用时找替代', () => {
+  it('★ 起始端口可用 → 直接用起始值（不无谓漂移）', async () => {
+    const free = await new Promise<number>((resolve) => {
+      const s = createServer();
+      s.listen(0, '127.0.0.1', () => {
+        const addr = s.address();
+        const p = typeof addr === 'object' && addr ? addr.port : 0;
+        s.close(() => resolve(p));
+      });
+    });
+    expect(await findFreePort('127.0.0.1', free)).toBe(free);
+  });
+
+  it('★ 起始端口被占用 → 返回下一个可用（不是 null）', async () => {
+    const blocker = createServer();
+    await new Promise<void>((r) => blocker.listen(0, '127.0.0.1', () => r()));
+    const addr = blocker.address();
+    const busy = typeof addr === 'object' && addr ? addr.port : 0;
+    try {
+      const found = await findFreePort('127.0.0.1', busy);
+      expect(found).not.toBeNull();
+      expect(found).not.toBe(busy);
+      expect(found).toBeGreaterThan(busy);
+      /* 找到的那个确实能用 */
+      expect(await probePort('127.0.0.1', found!)).toBeNull();
+    } finally {
+      await new Promise<void>((r) => blocker.close(() => r()));
+    }
+  });
+
+  it('区间越界（起始值 > 65535）→ null', async () => {
+    expect(await findFreePort('127.0.0.1', 65536)).toBeNull();
   });
 });
 
