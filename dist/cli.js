@@ -6,6 +6,7 @@
  */
 import { resolveKey, maskKey } from './config.js';
 import { runDoctor, renderDoctor } from './doctor.js';
+import { probePort } from './port.js';
 import { renderReady, renderReadyJson } from './report.js';
 import { startServer } from './server.js';
 const BUILTIN = ['serve', 'models', 'doctor', 'login', 'help', '--help', '-h'];
@@ -151,6 +152,14 @@ export async function runCli(adapter, meta, argv = process.argv.slice(2)) {
     if (!cred.ok && !parsed.json) {
         process.stderr.write(`凭证未就绪：${cred.detail}\n先运行：${adapter.command} login\n`);
     }
+    /* 端口预检（v0.2.9）：先探一次再起服务，把 EACCES / EADDRINUSE 翻译成能照做的提示。
+       Windows 上 8786–8789 常被系统预留段整段占住（Hyper-V / WSL / Docker），
+       那种情况 netstat 看不到占用者，只抛堆栈用户无从下手。 */
+    const portProblem = await probePort(host, port);
+    if (portProblem) {
+        process.stderr.write(`${portProblem}\n`);
+        return 1;
+    }
     try {
         const running = await startServer(adapter, {
             host,
@@ -172,9 +181,14 @@ export async function runCli(adapter, meta, argv = process.argv.slice(2)) {
     }
     catch (err) {
         const e = err;
-        if (e.code === 'EADDRINUSE') {
-            process.stderr.write(`端口 ${port} 已被占用 —— 换一个：${adapter.command} --port ${port + 1}\n`);
-            return 1;
+        /* 预检已覆盖 EACCES / EADDRINUSE。这里只剩「预检通过、真正 listen 时被抢」的竞态，
+           以及其它启动失败 —— 仍按端口类错误给人话提示，其余显示原始信息。 */
+        if (e.code === 'EADDRINUSE' || e.code === 'EACCES') {
+            const again = await probePort(host, port);
+            if (again) {
+                process.stderr.write(`${again}\n`);
+                return 1;
+            }
         }
         process.stderr.write(`启动失败：${e.message}\n`);
         return 1;

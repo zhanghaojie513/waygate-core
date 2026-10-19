@@ -12,6 +12,7 @@ export { aggregateSseToJson } from './aggregate.js';
 export { createSseDeltaNormalizer, normalizeChunkDelta, normalizeSsePayload, isNoopValue } from './sse-delta.js';
 export { AnthropicStreamEncoder, anthropicErrorType, anthropicToOpenAiBody, flattenSystem, mapStopReason, newMessageId, openAiSseToAnthropicFrames, sseFrame, toAnthropicErrorBody, toAnthropicMessage, } from './anthropic.js';
 export { fetchWithRetry, describeFetchError } from './retry.js';
+export { probePort, suggestPort } from './port.js';
 export { renderReady, renderReadyJson } from './report.js';
 export { runDoctor, renderDoctor, checkPortFree } from './doctor.js';
 export { runCli, parseArgs, helpText } from './cli.js';

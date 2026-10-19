@@ -13,6 +13,7 @@ export { aggregateSseToJson } from './aggregate.js';
 export { createSseDeltaNormalizer, normalizeChunkDelta, normalizeSsePayload, isNoopValue } from './sse-delta.js';
 export { AnthropicStreamEncoder, anthropicErrorType, anthropicToOpenAiBody, flattenSystem, mapStopReason, newMessageId, openAiSseToAnthropicFrames, sseFrame, toAnthropicErrorBody, toAnthropicMessage, type AnthropicMessageParams, } from './anthropic.js';
 export { fetchWithRetry, describeFetchError, type RetryOptions } from './retry.js';
+export { probePort, suggestPort, type PortProblem } from './port.js';
 export { renderReady, renderReadyJson, type ReadyReport } from './report.js';
 export { runDoctor, renderDoctor, checkPortFree, type CheckResult } from './doctor.js';
 export { runCli, parseArgs, helpText, type CliMeta, type ParsedArgs } from './cli.js';
